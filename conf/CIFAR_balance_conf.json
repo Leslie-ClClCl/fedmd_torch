@@ -1,0 +1,58 @@
+{
+  "models": [
+    {
+      "model_type": "resnet_20",
+      "params": ""
+    }
+  ],
+  "pre_train_params": {
+    "min_delta": 0.005,
+    "patience": 3,
+    "batch_size": 128,
+    "epochs": 100,
+    "is_shuffle": True,
+    "verbose": 1
+  },
+  "model_saved_dir": "cifar_balance_resnet20",
+  "model_saved_names": [
+    "resnet20"
+  ],
+  "early_stopping": False,
+  "N_parties": 1,
+  "N_samples_per_class": 500,
+  "N_alignment": 40000,
+  "private_classes": [
+    0,
+    70,
+    82,
+    11,
+    86,
+    59,
+    52,
+    47,
+    56,
+    14,
+    6,
+    51
+  ],
+  "public_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "is_show": False,
+  "N_rounds": 25,
+  "N_logits_matching_round": 50,
+  "N_private_training_round": 4,
+  "private_training_batchsize": 5,
+  "logits_matching_batchsize": 128,
+  "EMNIST_dir": None,
+  "result_save_dir": "./result_CIFAR_balanced/"
+}
