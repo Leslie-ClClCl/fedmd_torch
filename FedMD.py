@@ -18,7 +18,8 @@ def get_logits(net, dataloader):
     with torch.no_grad():
         for batch_idx, (x, y) in enumerate(dataloader):
             x, y = x.cuda(), y.cuda()
-            logits = net(x)
+            logits = net(x, logits=True, temperature=50)
+            logits = np.array(logits.cpu())
             if ret is None:
                 ret = logits
             else:
@@ -64,6 +65,8 @@ class FedMD:
             test_set = dataset_cifar(self.private_test_data['X'], self.private_test_data['y'], transform=transform_test)
             test_loader = data.DataLoader(test_set, batch_size=128, shuffle=False)
             self.private_test_loader = test_loader
+            # checkpoint = torch.load('resnet18_cifar100_regular.pth')
+            # parties[i].load_state_dict(checkpoint)
 
             criteria = nn.CrossEntropyLoss()
             optimizer = optim.SGD(parties[i].parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
@@ -71,6 +74,7 @@ class FedMD:
                                                              gamma=0.2)  # learning rate decay
             iter_per_epoch = len(train_loader)
             warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * 1)
+            best_acc = 0.0
             for epoch in range(1, 201):
                 if epoch > 1:
                     train_scheduler.step()
@@ -79,14 +83,14 @@ class FedMD:
 
                 # start to save best performance model after learning rate decay to 0.01
                 if epoch > 120 and best_acc < acc:
-                    weights_path = "resnet34_cifar100_best.pth"
+                    weights_path = "resnet18_cifar100_best.pth"
                     print('saving weights file to {}'.format(weights_path))
                     torch.save(parties[i].state_dict(), weights_path)
                     best_acc = acc
                     continue
 
                 if not epoch % 10:
-                    weights_path = "resnet34_cifar100_regular.pth"
+                    weights_path = "resnet18_cifar100_regular.pth"
                     print('saving weights file to {}'.format(weights_path))
                     torch.save(parties[i].state_dict(), weights_path)
 
@@ -98,7 +102,7 @@ class FedMD:
             # generate alignment data randomly
             alignment_set = generate_alignment_data(self.public_dataset['X'],
                                                     self.public_dataset['y'],
-                                                    self.N_alignment)
+                                                    self.N_alignment, transform=transform_train)
             alignment_loader = data.DataLoader(alignment_set, batch_size=self.logits_matching_batchsize, shuffle=False)
             logging.info("round %d" % r)
             # get logits
@@ -108,7 +112,7 @@ class FedMD:
                 logits += res
             logits /= self.N_parties
 
-            alignment_logit_set = dataset_logits(alignment_set.get_X(), logits)
+            alignment_logit_set = dataset_logits(alignment_set.get_X(), logits, transform=transform_train)
             alignment_logit_loader = data.DataLoader(alignment_logit_set, shuffle=True, batch_size=128)
             r += 1
             if r > self.N_rounds:
@@ -135,8 +139,7 @@ class FedMD:
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 160], gamma=0.3)
             for epoch in range(300):
                 trainer_logits(self.ini_model, train_loader=alignment_logit_loader, criterion=criteria,
-                               optimizer=optimizer,
-                               scheduler=scheduler, epoch=epoch)
+                               optimizer=optimizer, scheduler=scheduler, epoch=epoch)
             for cls in range(10, 22):
                 data_per_class_idx = (self.private_test_data["y"] == cls)
                 data_per_class_x = self.private_test_data["X"][data_per_class_idx]

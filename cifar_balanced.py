@@ -155,7 +155,7 @@ if __name__ == "__main__":
             parties.append(tmp)
 
     model_name = model_config[0]
-    ini_model = CANDIDATE_MODELS[model_name](num_classes=n_classes)
+    ini_model = get_network(model_name, num_classes=n_classes)
     ini_model.cuda()
     fedmd = FedMD(parties, ini_model=ini_model, public_dataset=public_dataset, public_test_dataset=public_test_dataset,
                   private_data=private_data, total_private_data=total_private_data, private_test_data=private_test_data,

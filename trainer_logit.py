@@ -63,7 +63,7 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch):
     while inputs is not None:
         inputs, labels = inputs.cuda(), labels.cuda()
 
-        outputs = model(inputs)
+        outputs = model(inputs, logits=True, temperature=50)
         loss = criterion(outputs, labels)
         loss = loss / 1
 

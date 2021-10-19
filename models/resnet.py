@@ -7,7 +7,8 @@
     Deep Residual Learning for Image Recognition
     https://arxiv.org/abs/1512.03385v1
 """
-
+import numpy as np
+import torch
 import torch.nn as nn
 
 
@@ -99,7 +100,6 @@ class ResNet(nn.Module):
         self.conv5_x = self._make_layer(block, 512, num_block[3], 2)
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
-
     def _make_layer(self, block, out_channels, num_blocks, stride):
         """make resnet layers(by layer i didnt mean this 'layer' was the
         same as a neuron netowork layer, ex. conv layer), one layer may
@@ -125,7 +125,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, logits=False, temperature=1):
         output = self.conv1(x)
         output = self.conv2_x(output)
         output = self.conv3_x(output)
@@ -134,7 +134,11 @@ class ResNet(nn.Module):
         output = self.avg_pool(output)
         output = output.view(output.size(0), -1)
         output = self.fc(output)
-
+        if logits:
+            output = torch.div(output, temperature)
+            output = nn.Softmax(dim=-1)(output)
+        # else:
+        #     output = nn.Softmax(dim=-1)(output)
         return output
 
 
@@ -166,3 +170,43 @@ def resnet152(num_classes):
     """ return a ResNet 152 object
     """
     return ResNet(BottleNeck, [3, 8, 36, 3], num_classes)
+
+
+if __name__ == '__main__':
+    checkpoint = torch.load('../resnet18_cifar100_best.pth')
+    net = resnet18(110)
+    net.load_state_dict(checkpoint)
+    net.cuda()
+    from data_utils import get_dataset
+    from data_process import dataset_cifar
+    from utils import transform_test
+    import torch.utils.data as data
+    import copy
+
+    X_train_CIFAR100, y_train_CIFAR100, X_test_CIFAR100, y_test_CIFAR100 = get_dataset('cifar100')
+    y_tmp = copy.deepcopy(y_train_CIFAR100)
+    y_test_tmp = copy.deepcopy(y_test_CIFAR100)
+    for index, cls_ in enumerate(range(100)):
+        y_train_CIFAR100[y_tmp == cls_] = index + 10
+        y_test_CIFAR100[y_test_tmp == cls_] = index + 10
+
+    from trainer import evaluate_acc
+
+    test_dataset = dataset_cifar(X_test_CIFAR100, y_test_CIFAR100, transform_test)
+    test_dataloader = data.DataLoader(test_dataset, 128)
+    cri = nn.CrossEntropyLoss()
+    acc = evaluate_acc(net, test_dataloader, cri)
+
+    data_per_class_idx = (y_test_CIFAR100 == 40)
+    data_per_class_x = X_test_CIFAR100[data_per_class_idx]
+    data_per_class_y = y_test_CIFAR100[data_per_class_idx]
+    data_per_class_set = dataset_cifar(data_per_class_x, data_per_class_y, transform=transform_test)
+    data_per_class_loader = data.DataLoader(data_per_class_set, batch_size=128, shuffle=False)
+
+    for idx, (img, label) in enumerate(data_per_class_loader):
+        img, label = img.cuda(), label.cuda()
+        with torch.no_grad():
+            pred = net(img)
+            logits = net(img, logits=True, temperature=20)
+            pred = np.array(pred.cpu())
+            logits = np.array(logits.cpu())

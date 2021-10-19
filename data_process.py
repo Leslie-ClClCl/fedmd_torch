@@ -53,7 +53,7 @@ class dataset_logits(Dataset):  # 这是一个Dataset子类
         return self.y
 
 
-def generate_alignment_data(X, y, N_alignment=3000):
+def generate_alignment_data(X, y, N_alignment=3000, transform=None):
     split = StratifiedShuffleSplit(n_splits=1, train_size=N_alignment)
     if N_alignment == "all":
         alignment_data = {}
@@ -64,15 +64,7 @@ def generate_alignment_data(X, y, N_alignment=3000):
     for train_index, _ in split.split(X, y):
         X_alignment = X[train_index]
         y_alignment = y[train_index]
-    alignment_set = dataset_cifar(X_alignment, y_alignment, transform=transforms.Compose([
-        transforms.Pad(4, padding_mode='reflect'),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(32),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            np.array([125.3, 123.0, 113.9]) / 255.0,
-            np.array([63.0, 62.1, 66.7]) / 255.0),
-    ]))
+    alignment_set = dataset_cifar(X_alignment, y_alignment, transform=transform)
     return alignment_set
 
 

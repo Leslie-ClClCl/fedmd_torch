@@ -42,7 +42,7 @@ def trainer(net, data_loader, epoch, optimizer, criteria, warmup_scheduler, usin
         attr = attr[1:]
         # writer.add_histogram("{}/{}".format(layer, attr), param, epoch)
     finish_time = time.time()
-    print('Training Epoch: {epoch} \tLoss: {:0.4f}\tLR: {:0.6f}\tTime Consumed:{.2f}'.format(
+    print('Training Epoch: {epoch} \tLoss: {:0.4f}\tLR: {:0.6f}\tTime Consumed:{:.2f}'.format(
         loss.item(),
         optimizer.param_groups[0]['lr'],
         finish_time - start_time,
