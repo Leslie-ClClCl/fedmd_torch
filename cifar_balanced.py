@@ -35,7 +35,7 @@ def parseArgs():
     parser.add_argument('-N_samples_per_class', type=int, default=500)
     parser.add_argument('-N_alignment', type=int, default=40000)
     parser.add_argument('-private_classes', type=int)
-    parser.add_argument('-public_classes', type=int)
+    parser.add_argument('-public_classes', type=int, default=10)
     parser.add_argument('-N_rounds', type=int, default=1)
     parser.add_argument('-N_logits_matching_round', type=int, default=300)
     parser.add_argument('-N_private_training_round', type=int, default=200)
@@ -159,11 +159,12 @@ if __name__ == "__main__":
             # train_models(
             #     parties[0], X_train_CIFAR10, y_train_CIFAR10,X_test_CIFAR10, y_test_CIFAR10, epochs=5,
             #     save_dir=model_saved_dir, save_name=model_saved_names[0]+".pth")
-        for idx, name in enumerate(model_names):
-            model_name = model_config[idx]
-            tmp = get_network(model_name, num_classes=n_classes)
-            tmp.load_state_dict(torch.load(dpath + '/' + name)['state_dict'])
-            parties.append(tmp)
+        else:
+            for idx, name in enumerate(model_names):
+                model_name = model_config[idx]
+                tmp = get_network(model_name, num_classes=n_classes)
+                tmp.load_state_dict(torch.load(dpath + '/' + name))
+                parties.append(tmp)
 
     model_name = model_config[0]
     ini_model = get_network(model_name, num_classes=n_classes)

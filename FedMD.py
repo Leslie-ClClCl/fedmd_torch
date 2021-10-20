@@ -84,14 +84,14 @@ class FedMD:
 
                 # start to save best performance model after learning rate decay to 0.01
                 if epoch > 120 and best_acc < acc:
-                    weights_path = os.path.join(model_saved_dir,model_saved_name[i]+'_best.pth')
+                    weights_path = os.path.join(model_saved_dir, model_saved_name[i] + '.pth')
                     print('saving weights file to {}'.format(weights_path))
                     torch.save(parties[i].state_dict(), weights_path)
                     best_acc = acc
                     continue
 
-                if not epoch % 10:
-                    weights_path = os.path.join(model_saved_dir,model_saved_name[i]+'_regular.pth')
+                if not epoch % 10 and epoch <= 120:
+                    weights_path = os.path.join(model_saved_dir, model_saved_name[i] + '.pth')
                     print('saving weights file to {}'.format(weights_path))
                     torch.save(parties[i].state_dict(), weights_path)
 
@@ -139,7 +139,7 @@ class FedMD:
             # cause using only one party, do not update parties' model using logits
             # then train global model using public logits
             criteria = nn.MSELoss()
-            optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-9)
+            optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-9)
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 160], gamma=0.2)
             for epoch in range(self.N_logits_matching_round):
                 trainer_logits(self.ini_model, train_loader=alignment_logit_loader, criterion=criteria,
