@@ -11,8 +11,8 @@ import torch.cuda
 from FedMD import FedMD
 from classifier_models.resnet import resnet18, resnet50
 from data_utils import get_dataset, generate_partial_data, generate_bal_private_data
-from utils import get_network
 from draw_hist import draw_hist, fine_label_names
+from utils import get_network
 
 # select free GPU automatically
 
@@ -31,14 +31,14 @@ def parseArgs():
     parser = argparse.ArgumentParser(description='FedMD')
     parser.add_argument('-models', type=str, action="append")
     parser.add_argument('-N_parties', type=int, default=1)
-    parser.add_argument('-temperature', type=int, default=50)
+    parser.add_argument('-temperature', type=int, default=10)
     parser.add_argument('-N_samples_per_class', type=int, default=500)
     parser.add_argument('-N_alignment', type=int, default=40000)
     parser.add_argument('-private_classes', type=int)
     parser.add_argument('-public_classes', type=int)
     parser.add_argument('-N_rounds', type=int, default=1)
-    parser.add_argument('-N_logits_matching_round', type=int, default=4)
-    parser.add_argument('-N_private_training_round', type=int, default=4)
+    parser.add_argument('-N_logits_matching_round', type=int, default=300)
+    parser.add_argument('-N_private_training_round', type=int, default=200)
     parser.add_argument('-result_saved_path', type=str, default='results')
     parser.add_argument('-with_reverse', type=int, default=0)
     parser.add_argument('-train_private_model', type=int, default=1)
@@ -56,10 +56,12 @@ if __name__ == "__main__":
     if public_classes == 10:
         public_classes = list(range(10))
     private_classes = args.private_classes
-    model_saved_dir = './checkpoints/'+ model_config[0] + '_' + str(private_classes)
+    model_saved_dir = './checkpoints/' + model_config[0] + '_' + str(private_classes)
+    if not os.path.exists(model_saved_dir):
+        os.mkdir(model_saved_dir)
     model_saved_names = []
     for idx, model_name in enumerate(model_config):
-        model_saved_names.append(model_name+'_'+str(private_classes)+'cls')
+        model_saved_names.append(model_name + '_' + str(private_classes) + 'cls')
 
     if private_classes == 6:
         private_classes = [3, 4, 13, 0, 5, 9]
@@ -147,6 +149,16 @@ if __name__ == "__main__":
     else:
         dpath = os.path.abspath(model_saved_dir)
         model_names = os.listdir(dpath)
+        if len(model_names) == 0:
+            for i, model_name in enumerate(model_config):
+                # tmp = CANDIDATE_MODELS[model_name](num_classes=n_classes, pretrained=True)
+                tmp = get_network(model_name, num_classes=n_classes)
+                tmp.cuda()
+                logging.debug("model {0} : {1}".format(i, model_saved_names[i]))
+                parties.append(tmp)
+            # train_models(
+            #     parties[0], X_train_CIFAR10, y_train_CIFAR10,X_test_CIFAR10, y_test_CIFAR10, epochs=5,
+            #     save_dir=model_saved_dir, save_name=model_saved_names[0]+".pth")
         for idx, name in enumerate(model_names):
             model_name = model_config[idx]
             tmp = get_network(model_name, num_classes=n_classes)
@@ -168,4 +180,5 @@ if __name__ == "__main__":
     for idx in private_classes:
         label_names_need.append(fine_label_names[idx] + ' ' + str(idx))
     draw_hist([acc_ref, acc_ini], label_names_need, model_saved_names[0],
-              os.path.join(result_saved_path, model_saved_names[0]+'_'+time.strftime("%a %b %d %H:%M:%S %Y", time.localtime()))+'.png')
+              os.path.join(result_saved_path, model_saved_names[0] + '_' + time.strftime("%a %b %d %H:%M:%S %Y %Z",
+                                                                                         time.localtime())) + '.png')

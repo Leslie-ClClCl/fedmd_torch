@@ -80,7 +80,7 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, temperatu
 
         if iter_index % 100 == 0:
             print(
-                f"train: epoch {epoch:0>3d}, iter [{iter_index:0>4d}, {iters:0>4d}], lr: {scheduler.get_last_lr()[0]:.6f}, loss_total: {loss.item():.6f}"
+                f"train:\tepoch {epoch:d},\titer [{iter_index:d}, \t{iters:d}],\tlr: {scheduler.get_last_lr()[0]:.6f},\tloss_total: {loss.item():.6f}"
             )
         iter_index += 1
     scheduler.step()
@@ -93,13 +93,13 @@ def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch, 
     # remember best prec@1 and save checkpoint
     end_time = time.time()
     print(
-        f"val: epoch {epoch:0>3d}, time consumed: {end_time - start_time}s, loss: {losses:.6f}"
+        f"val:\tepoch {epoch:d},\ttime consumed: {end_time - start_time}s, loss: {losses:.6f}"
     )
     torch.save(
         {
             'epoch': epoch,
             'loss': losses,
-            'lr': scheduler.get_lr()[0],
+            'lr': scheduler.get_last_lr()[0],
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'scheduler_state_dict': scheduler.state_dict(),
