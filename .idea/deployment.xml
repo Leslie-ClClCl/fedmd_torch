@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="lichenglong@222.20.126.60:22 password" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true">
+  <component name="PublishConfigData" autoUpload="Always" serverName="fedmd_torch" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true">
     <serverData>
+      <paths name="fedmd_torch">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="fujiayun@222.20.126.60:22">
         <serverdata>
           <mappings>
@@ -19,7 +26,21 @@
       <paths name="lichenglong@222.20.126.60:22 password">
         <serverdata>
           <mappings>
-            <mapping deploy="/" local="$PROJECT_DIR$" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="lichenglong@222.20.126.60:22 password (1)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="lichenglong@222.20.126.60:22 password (2)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/lichenglong/pycharm_project/fedmd_torch" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

@@ -50,7 +50,7 @@ class DataPrefetcher():
         return input, target
 
 
-def train(train_loader, model, criterion, optimizer, scheduler, epoch):
+def train(train_loader, model, criterion, optimizer, scheduler, epoch, temperature):
     losses = AverageMeter()
     # switch to train mode
     model.train()
@@ -63,7 +63,7 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch):
     while inputs is not None:
         inputs, labels = inputs.cuda(), labels.cuda()
 
-        outputs = model(inputs, logits=True, temperature=50)
+        outputs = model(inputs, logits=True, temperature=temperature)
         loss = criterion(outputs, labels)
         loss = loss / 1
 
@@ -87,9 +87,9 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch):
     return losses.avg
 
 
-def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch):
+def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch, temperature):
     start_time = time.time()
-    losses = train(train_loader, model, criterion, optimizer, scheduler, epoch)
+    losses = train(train_loader, model, criterion, optimizer, scheduler, epoch, temperature)
     # remember best prec@1 and save checkpoint
     end_time = time.time()
     print(

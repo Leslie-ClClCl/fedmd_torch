@@ -51,7 +51,7 @@ def trainer(net, data_loader, epoch, optimizer, criteria, warmup_scheduler, usin
 
 
 @torch.no_grad()
-def evaluate_acc(net, data_loader, criteria, epoch=0, tb=False, using_gpu=True, writer=None):
+def evaluate_acc(net, data_loader, criteria=None, epoch=0, tb=False, using_gpu=True, writer=None):
     start = time.time()
     net.eval()
 
@@ -65,14 +65,13 @@ def evaluate_acc(net, data_loader, criteria, epoch=0, tb=False, using_gpu=True, 
             labels = labels.cuda()
 
         outputs = net(images)
-        loss = criteria(outputs, labels)
-
-        test_loss += loss.item()
+        if criteria is not None:
+            loss = criteria(outputs, labels)
+            test_loss += loss.item()
         _, preds = outputs.max(1)
         correct += preds.eq(labels).sum()
 
     finish = time.time()
-    print('Evaluating Network.....')
     print('Test set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed:{:.2f}s'.format(
         epoch,
         test_loss / len(data_loader.dataset),
@@ -86,4 +85,4 @@ def evaluate_acc(net, data_loader, criteria, epoch=0, tb=False, using_gpu=True, 
         writer.add_scalar('Test/Average loss', test_loss / len(data_loader.dataset), epoch)
         writer.add_scalar('Test/Accuracy', correct.float() / len(data_loader.dataset), epoch)
 
-    return correct.float() / len(data_loader.dataset)
+    return correct.float().item() / len(data_loader.dataset)

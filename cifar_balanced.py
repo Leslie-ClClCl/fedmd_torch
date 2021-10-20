@@ -2,6 +2,7 @@ import argparse
 import copy
 import logging
 import os
+import time
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,7 @@ from FedMD import FedMD
 from classifier_models.resnet import resnet18, resnet50
 from data_utils import get_dataset, generate_partial_data, generate_bal_private_data
 from utils import get_network
+from draw_hist import draw_hist, fine_label_names
 
 # select free GPU automatically
 
@@ -28,8 +30,6 @@ CANDIDATE_MODELS = {"resnet_18": resnet18,
 def parseArgs():
     parser = argparse.ArgumentParser(description='FedMD')
     parser.add_argument('-models', type=str, action="append")
-    parser.add_argument('-model_saved_dir', type=str, default='cifar_resnet18_15')
-    parser.add_argument('-model_saved_names', type=str, action="append")
     parser.add_argument('-N_parties', type=int, default=1)
     parser.add_argument('-temperature', type=int, default=50)
     parser.add_argument('-N_samples_per_class', type=int, default=500)
@@ -37,12 +37,11 @@ def parseArgs():
     parser.add_argument('-private_classes', type=int)
     parser.add_argument('-public_classes', type=int)
     parser.add_argument('-N_rounds', type=int, default=1)
-    parser.add_argument('-N_logits_matching_round', type=int, default=300)
+    parser.add_argument('-N_logits_matching_round', type=int, default=4)
     parser.add_argument('-N_private_training_round', type=int, default=4)
     parser.add_argument('-result_saved_path', type=str, default='results')
     parser.add_argument('-with_reverse', type=int, default=0)
     parser.add_argument('-train_private_model', type=int, default=1)
-    parser.add_argument('-test', type=int, default=0)
     # parser.add_argument('-N_private', )
 
     args = parser.parse_args()
@@ -52,16 +51,16 @@ def parseArgs():
 if __name__ == "__main__":
     args = parseArgs()
     model_config = args.models
-    model_saved_dir = args.model_saved_dir
-    model_saved_names = args.model_saved_names
 
     public_classes = args.public_classes
     if public_classes == 10:
         public_classes = list(range(10))
     private_classes = args.private_classes
-    model_saved_dir = model_saved_dir + '_' + str(private_classes)
-    for idx, name in enumerate(model_saved_names):
-        model_saved_names[idx] = name + '_' + str(private_classes) + 'cls'
+    model_saved_dir = './checkpoints/'+ model_config[0] + '_' + str(private_classes)
+    model_saved_names = []
+    for idx, model_name in enumerate(model_config):
+        model_saved_names.append(model_name+'_'+str(private_classes)+'cls')
+
     if private_classes == 6:
         private_classes = [3, 4, 13, 0, 5, 9]
     elif private_classes == 15:
@@ -95,11 +94,11 @@ if __name__ == "__main__":
     result_saved_path = args.result_saved_path
     info = model_saved_names[0] + '-' + str(with_reverse)
     train_private_model = args.train_private_model
-    test = args.test
+
     # logging.basicConfig(level=logging.INFO)
     if not os.path.exists(result_saved_path):
         os.mkdir(result_saved_path)
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     # load data and create dataset
     X_train_CIFAR10, y_train_CIFAR10, X_test_CIFAR10, y_test_CIFAR10 = get_dataset('cifar10')
@@ -160,7 +159,13 @@ if __name__ == "__main__":
     fedmd = FedMD(parties, ini_model=ini_model, public_dataset=public_dataset, public_test_dataset=public_test_dataset,
                   private_data=private_data, total_private_data=total_private_data, private_test_data=private_test_data,
                   N_rounds=N_rounds, N_alignment=N_alignment, N_logits_matching_round=N_logits_matching_round,
-                  logits_matching_batchsize=logits_matching_batchsize,
-                  N_private_training_round=N_private_training_round,
-                  private_training_batchsize=private_training_batchsize)
-    fedmd.collaborative_training()
+                  logits_matching_batchsize=logits_matching_batchsize, model_saved_name=model_saved_names,
+                  N_private_training_round=N_private_training_round, model_saved_dir=model_saved_dir,
+                  private_training_batchsize=private_training_batchsize, temperature=temperature, N_private_classes=len(private_classes))
+    acc_ref, acc_ini = fedmd.collaborative_training()
+
+    label_names_need = []
+    for idx in private_classes:
+        label_names_need.append(fine_label_names[idx] + ' ' + str(idx))
+    draw_hist([acc_ref, acc_ini], label_names_need, model_saved_names[0],
+              os.path.join(result_saved_path, model_saved_names[0]+'_'+time.strftime("%a %b %d %H:%M:%S %Y", time.localtime()))+'.png')
