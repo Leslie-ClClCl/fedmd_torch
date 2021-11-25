@@ -21,7 +21,11 @@ def get_dataset(dataset_name):
     elif dataset_name == 'mnist':
         dataset = datasets.MNIST
     elif dataset_name == 'imagenet_tiny':
-        dataset = datasets.ImageNet
+        train_data, train_target, test_data, test_target = \
+            tiny_imagenet_loader('./data/tiny-imagenet-200/')
+        train_data = [cv2.resize(img, (32, 32)) for img in train_data]
+        test_data = [cv2.resize(img, (32, 32)) for img in test_data]
+        return train_data, train_target, test_data, test_target
     else:
         dataset = datasets.MNIST
     train_dataset = dataset(root='./data', train=True, download=True)
