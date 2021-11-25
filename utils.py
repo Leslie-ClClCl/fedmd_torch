@@ -325,6 +325,9 @@ transform_train = transforms.Compose([
     transforms.Normalize(CIFAR100_TRAIN_MEAN, CIFAR100_TRAIN_STD)
 ])
 
+transform_mnist = transforms.Compose([transforms.ToTensor(),
+                                      transforms.Normalize(mean=[0.5], std=[0.5])])
+
 transform_test = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(CIFAR100_TRAIN_MEAN, CIFAR100_TRAIN_STD)

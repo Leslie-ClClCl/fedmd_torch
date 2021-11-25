@@ -8,6 +8,7 @@ import torch.optim as optim
 import torch.utils.data as data
 
 from data_process import generate_alignment_data, dataset_cifar, dataset_logits
+from drawer import draw_loss
 from trainer import trainer, evaluate_acc
 from trainer_logit import trainer_logits
 from utils import WarmUpLR, transform_train, transform_test
@@ -17,7 +18,7 @@ def get_logits(net, dataloader, temperature):
     net.eval()
     ret = None
     with torch.no_grad():
-        for batch_idx, (x, y) in enumerate(dataloader):
+        for x, y in dataloader:
             x, y = x.cuda(), y.cuda()
             logits = net(x, logits=True, temperature=temperature)
             if ret is None:
@@ -31,7 +32,7 @@ class FedMD:
     def __init__(self, parties, ini_model, public_dataset, public_test_dataset,
                  private_data, total_private_data, temperature,
                  private_test_data, N_alignment, N_private_classes,
-                 N_rounds, model_saved_dir, model_saved_name,
+                 N_rounds, model_saved_dir, model_saved_name, result_saved_dir, train_private_model,
                  N_logits_matching_round, logits_matching_batchsize,
                  N_private_training_round, private_training_batchsize):
         self.N_parties = len(parties)
@@ -49,14 +50,17 @@ class FedMD:
         self.temperature = temperature
         self.models = []
         self.init_result = []
-        self.total_data = {}
-        self.total_data["X"] = np.concatenate((self.public_dataset["X"], self.private_data[0]["X"]), axis=0)
-        self.total_data["y"] = np.concatenate((self.public_dataset["y"], self.private_data[0]["y"]), axis=0)
+        # self.total_data = {}
+        # self.total_data["X"] = np.concatenate((self.public_dataset["X"], self.private_data[0]["X"]), axis=0)
+        # self.total_data["y"] = np.concatenate((self.public_dataset["y"], self.private_data[0]["y"]), axis=0)
         self.ini_model = ini_model
         public_test_set = dataset_cifar(public_test_dataset['X'], public_test_dataset['y'], transform=transform_test)
         self.public_test_loader = data.DataLoader(public_test_set, batch_size=128)
         self.private_test_loader = None
         self.private_train_loader = []
+        self.logits_matching_model_saved_dir = os.path.join(result_saved_dir, 'logit_matching_checkpoints')
+        if not os.path.exists(self.logits_matching_model_saved_dir):
+            os.mkdir(self.logits_matching_model_saved_dir)
 
         for i in range(self.N_parties):
             train_set = dataset_cifar(self.private_data[i]['X'], self.private_data[i]['y'], transform=transform_train)
@@ -76,24 +80,25 @@ class FedMD:
             iter_per_epoch = len(train_loader)
             warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * 1)
             best_acc = 0.0
-            for epoch in range(1, self.N_private_training_round+1):
-                if epoch > 1:
-                    train_scheduler.step()
-                trainer(parties[i], train_loader, epoch, optimizer, criteria, warmup_scheduler)
-                acc = evaluate_acc(parties[i], test_loader, criteria, epoch)
+            if train_private_model:
+                for epoch in range(1, self.N_private_training_round + 1):
+                    if epoch > 1:
+                        train_scheduler.step()
+                    trainer(parties[i], train_loader, epoch, optimizer, criteria, warmup_scheduler)
+                    acc = evaluate_acc(parties[i], test_loader, criteria, epoch)
 
-                # start to save best performance model after learning rate decay to 0.01
-                if epoch > 120 and best_acc < acc:
-                    weights_path = os.path.join(model_saved_dir, model_saved_name[i] + '.pth')
-                    print('saving weights file to {}'.format(weights_path))
-                    torch.save(parties[i].state_dict(), weights_path)
-                    best_acc = acc
-                    continue
+                    # start to save best performance model after learning rate decay to 0.01
+                    if epoch > 120 and best_acc < acc:
+                        weights_path = os.path.join(model_saved_dir, model_saved_name[i] + '.pth')
+                        logging.info('saving weights file with best acc to {}'.format(weights_path))
+                        torch.save(parties[i].state_dict(), weights_path)
+                        best_acc = acc
+                        continue
 
-                if not epoch % 10 and epoch <= 120:
-                    weights_path = os.path.join(model_saved_dir, model_saved_name[i] + '.pth')
-                    print('saving weights file to {}'.format(weights_path))
-                    torch.save(parties[i].state_dict(), weights_path)
+                    if not epoch % 10 and epoch <= 120:
+                        weights_path = os.path.join(model_saved_dir, model_saved_name[i] + '.pth')
+                        logging.info('saving weights file to {}'.format(weights_path))
+                        torch.save(parties[i].state_dict(), weights_path)
 
             self.models.append(parties[i])
 
@@ -103,7 +108,7 @@ class FedMD:
             # generate alignment data randomly
             alignment_set = generate_alignment_data(self.public_dataset['X'],
                                                     self.public_dataset['y'],
-                                                    self.N_alignment, transform=transform_train)
+                                                    self.N_alignment, transform=transform_test)
             alignment_loader = data.DataLoader(alignment_set, batch_size=self.logits_matching_batchsize, shuffle=False)
             logging.info("round %d" % r)
             # get logits
@@ -113,7 +118,7 @@ class FedMD:
                 logits += res
             logits /= self.N_parties
 
-            alignment_logit_set = dataset_logits(alignment_set.get_X(), logits, transform=transform_train)
+            alignment_logit_set = dataset_logits(alignment_set.get_X(), logits, transform=transform_test)
             alignment_logit_loader = data.DataLoader(alignment_logit_set, shuffle=True, batch_size=128)
             r += 1
             if r > self.N_rounds:
@@ -138,9 +143,15 @@ class FedMD:
             # updates global model using logits
             # cause using only one party, do not update parties' model using logits
             # then train global model using public logits
-            criteria = nn.MSELoss()
-            optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-9)
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 160], gamma=0.2)
+            criteria = nn.L1Loss()
+            optimizer = torch.optim.Adam(self.ini_model.parameters(), lr=0.01, weight_decay=5e-9)
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[50, 100, 150, 200],
+                                                             gamma=np.sqrt(0.1))
+            loss_rec = []
             for epoch in range(self.N_logits_matching_round):
-                trainer_logits(self.ini_model, train_loader=alignment_logit_loader, criterion=criteria,
-                               optimizer=optimizer, scheduler=scheduler, epoch=epoch, temperature=self.temperature)
+                losses = trainer_logits(self.ini_model, train_loader=alignment_logit_loader, criterion=criteria,
+                                        save_dir=self.logits_matching_model_saved_dir,
+                                        optimizer=optimizer, scheduler=scheduler, epoch=epoch,
+                                        temperature=self.temperature)
+                loss_rec.append(losses)
+            draw_loss(loss_rec, 'logit_matching_loss', os.path.join(self.logits_matching_model_saved_dir, 'loss.png'))

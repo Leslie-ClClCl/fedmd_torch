@@ -1,7 +1,16 @@
 import logging
+import os.path
 
+import cv2
+import numpy
 import numpy as np
 from torchvision import datasets
+
+
+def tiny_imagenet_loader(root):
+    trainset = datasets.ImageFolder(root=os.path.join(root, 'train'))
+    testset = datasets.ImageFolder(root=os.path.join(root, 'val'))
+    return trainset.data, trainset.targets, testset.data, testset.targets
 
 
 def get_dataset(dataset_name):
@@ -9,12 +18,26 @@ def get_dataset(dataset_name):
         dataset = datasets.CIFAR10
     elif dataset_name == 'cifar100':
         dataset = datasets.CIFAR100
+    elif dataset_name == 'mnist':
+        dataset = datasets.MNIST
+    elif dataset_name == 'imagenet_tiny':
+        dataset = datasets.ImageNet
     else:
         dataset = datasets.MNIST
     train_dataset = dataset(root='./data', train=True, download=True)
     test_dataset = dataset(root='./data', train=False, download=True)
     train_dataset.targets = np.squeeze(train_dataset.targets)
     test_dataset.targets = np.squeeze(test_dataset.targets)
+    # add fake dimension for mnist dataset
+    if dataset_name == 'mnist':
+        train_dataset.data = train_dataset.data.numpy()
+        test_dataset.data = test_dataset.data.numpy()
+        train_dataset.targets = train_dataset.targets.numpy()
+        test_dataset.targets = test_dataset.targets.numpy()
+        train_dataset.data = numpy.array(
+            [cv2.cvtColor(cv2.resize(img, (32, 32)), cv2.COLOR_GRAY2BGR) for img in train_dataset.data])
+        test_dataset.data = numpy.array(
+            [cv2.cvtColor(cv2.resize(img, (32, 32)), cv2.COLOR_GRAY2BGR) for img in test_dataset.data])
     return train_dataset.data, train_dataset.targets, test_dataset.data, test_dataset.targets
 
 
@@ -61,4 +84,4 @@ def generate_bal_private_data(X, y, N_parties=10, classes_in_use=range(11),
 
 
 if __name__ == '__main__':
-    get_dataset('cifar100')
+    get_dataset('imagenet_tiny')

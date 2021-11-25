@@ -29,6 +29,30 @@ class dataset_cifar(Dataset):  # 这是一个Dataset子类
         return self.y
 
 
+class dataset_mnist(Dataset):  # 这是一个Dataset子类
+    def __init__(self, X, y: np, transform):
+        self.X = X.squeeze(-1)
+        self.y = torch.LongTensor(y)
+        self.transform = transform
+        # self.X = np.vstack(self.X).reshape(-1, 3, 32, 32)
+        # self.X = self.X.transpose((0, 2, 3, 1))  # convert to HWC
+
+    def __getitem__(self, index):
+        img = Image.fromarray(self.X[index])
+        res_X = self.transform(img)
+        res_y = self.y[index]
+        return res_X, res_y
+
+    def __len__(self):
+        return len(self.y)
+
+    def get_X(self):
+        return self.X
+
+    def get_y(self):
+        return self.y
+
+
 class dataset_logits(Dataset):  # 这是一个Dataset子类
     def __init__(self, X, y: np, transform):
         self.X = X

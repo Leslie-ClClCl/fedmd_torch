@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 
@@ -50,7 +51,7 @@ class DataPrefetcher():
         return input, target
 
 
-def train(train_loader, model, criterion, optimizer, scheduler, epoch, temperature):
+def train(train_loader, model, criterion, optimizer, scheduler, epoch, temperature, result_saved_path=None):
     losses = AverageMeter()
     # switch to train mode
     model.train()
@@ -60,18 +61,16 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, temperatu
     inputs, labels = prefetcher.next()
     iter_index = 1
 
+
     while inputs is not None:
         inputs, labels = inputs.cuda(), labels.cuda()
 
         outputs = model(inputs, logits=True, temperature=temperature)
         loss = criterion(outputs, labels)
-        loss = loss / 1
 
         loss.backward()
-
-        if iter_index % 1 == 0:
-            optimizer.step()
-            optimizer.zero_grad()
+        optimizer.step()
+        optimizer.zero_grad()
 
         # measure accuracy and record loss
         losses.update(loss.item(), inputs.size(0))
@@ -79,7 +78,7 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, temperatu
         inputs, labels = prefetcher.next()
 
         if iter_index % 100 == 0:
-            print(
+            logging.info(
                 f"train:\tepoch {epoch:d},\titer [{iter_index:d}, \t{iters:d}],\tlr: {scheduler.get_last_lr()[0]:.6f},\tloss_total: {loss.item():.6f}"
             )
         iter_index += 1
@@ -87,12 +86,12 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, temperatu
     return losses.avg
 
 
-def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch, temperature):
+def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch, temperature, save_dir='./'):
     start_time = time.time()
     losses = train(train_loader, model, criterion, optimizer, scheduler, epoch, temperature)
     # remember best prec@1 and save checkpoint
     end_time = time.time()
-    print(
+    logging.info(
         f"val:\tepoch {epoch:d},\ttime consumed: {end_time - start_time}s, loss: {losses:.6f}"
     )
     torch.save(
@@ -103,7 +102,8 @@ def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch, 
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'scheduler_state_dict': scheduler.state_dict(),
-        }, os.path.join('./', 'latest.pth'))
+        }, os.path.join(save_dir, 'latest.pth'))
+    return losses
 
 
 def pred(model, data_loader):

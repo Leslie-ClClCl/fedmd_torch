@@ -35,7 +35,8 @@ class BasicBlock(nn.Module):
                       kernel_size=3,
                       stride=stride,
                       padding=1,
-                      bias=False), nn.BatchNorm2d(out_channels),
+                      bias=False),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels,
                       out_channels * BasicBlock.expansion,
@@ -110,7 +111,10 @@ class ResNet(nn.Module):
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(64), nn.ReLU(inplace=True))
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            # nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        )
 
         self.stage2 = self._make_layer(block, 64, layers[0], 1)
         self.stage3 = self._make_layer(block, 128, layers[1], 2)

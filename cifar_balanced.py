@@ -9,7 +9,6 @@ import pandas as pd
 import torch.cuda
 
 from FedMD import FedMD
-from classifier_models.resnet import resnet18, resnet50
 from data_utils import get_dataset, generate_partial_data, generate_bal_private_data
 from draw_hist import draw_hist, fine_label_names
 from utils import get_network
@@ -20,11 +19,8 @@ from utils import get_network
 os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >./tmp')
 memory_gpu = [int(x.split()[2]) for x in open('./tmp', 'r').readlines()]
 os.environ['CUDA_VISIBLE_DEVICES'] = str(np.argmax(memory_gpu))
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.system('rm tmp')
-
-CANDIDATE_MODELS = {"resnet_18": resnet18,
-                    "resnet_50": resnet50,
-                    }
 
 
 def parseArgs():
@@ -39,7 +35,7 @@ def parseArgs():
     parser.add_argument('-N_rounds', type=int, default=1)
     parser.add_argument('-N_logits_matching_round', type=int, default=300)
     parser.add_argument('-N_private_training_round', type=int, default=200)
-    parser.add_argument('-result_saved_path', type=str, default='results')
+    parser.add_argument('-result_saved_path', type=str, default='results/')
     parser.add_argument('-with_reverse', type=int, default=0)
     parser.add_argument('-train_private_model', type=int, default=1)
     # parser.add_argument('-N_private', )
@@ -56,9 +52,14 @@ if __name__ == "__main__":
     if public_classes == 10:
         public_classes = list(range(10))
     private_classes = args.private_classes
-    model_saved_dir = './checkpoints/' + model_config[0] + '_' + str(private_classes)
+    result_saved_path = os.path.join(args.result_saved_path,
+                                     model_config[0] + '_' + str(private_classes) + '_t' + str(args.temperature))
+    if not os.path.exists(result_saved_path):
+        os.mkdir(result_saved_path)
+    model_saved_dir = os.path.join(args.result_saved_path, 'checkpoints', model_config[0] + '_' + str(private_classes))
     if not os.path.exists(model_saved_dir):
         os.mkdir(model_saved_dir)
+
     model_saved_names = []
     for idx, model_name in enumerate(model_config):
         model_saved_names.append(model_name + '_' + str(private_classes) + 'cls')
@@ -93,45 +94,71 @@ if __name__ == "__main__":
     logits_matching_batchsize = 128
     temperature = args.temperature
     with_reverse = args.with_reverse
-    result_saved_path = args.result_saved_path
+
     info = model_saved_names[0] + '-' + str(with_reverse)
     train_private_model = args.train_private_model
 
-    # logging.basicConfig(level=logging.INFO)
-    if not os.path.exists(result_saved_path):
-        os.mkdir(result_saved_path)
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     # load data and create dataset
     X_train_CIFAR10, y_train_CIFAR10, X_test_CIFAR10, y_test_CIFAR10 = get_dataset('cifar10')
+    X_train_MNIST, y_train_MNIST, X_test_MNIST, y_test_MNIST = get_dataset('mnist')
     X_train_CIFAR100, y_train_CIFAR100, X_test_CIFAR100, y_test_CIFAR100 = get_dataset('cifar100')
-    # using only specified labeled data
-    X_train_CIFAR100, y_train_CIFAR100 = generate_partial_data(X_train_CIFAR100, y_train_CIFAR100,
-                                                               class_in_use=private_classes)
-    X_test_CIFAR100, y_test_CIFAR100 = generate_partial_data(X_test_CIFAR100, y_test_CIFAR100,
-                                                             class_in_use=private_classes)
+    # X_train_imagenet, y_train_imagenet, X_test_imagenet, y_test_imagenet = get_dataset('imagenet_tiny')
+    # # using only specified labeled data (CIFAR100)
+    # X_train_CIFAR100, y_train_CIFAR100 = generate_partial_data(X_train_CIFAR100, y_train_CIFAR100,
+    #                                                            class_in_use=private_classes)
+    # X_test_CIFAR100, y_test_CIFAR100 = generate_partial_data(X_test_CIFAR100, y_test_CIFAR100,
+    #                                                          class_in_use=private_classes)
 
-    # relabel the targets of CIFAR-100
-    y_tmp = copy.deepcopy(y_train_CIFAR100)
-    y_test_tmp = copy.deepcopy(y_test_CIFAR100)
+    # # relabel the targets of CIFAR-100
+    # y_tmp = copy.deepcopy(y_train_CIFAR100)
+    # y_test_tmp = copy.deepcopy(y_test_CIFAR100)
+    # for index, cls_ in enumerate(private_classes):
+    #     y_train_CIFAR100[y_tmp == cls_] = index + len(public_classes)
+    #     y_test_CIFAR100[y_test_tmp == cls_] = index + len(public_classes)
+    # del index, cls_
+    # logging.debug(pd.Series(y_train_CIFAR100).value_counts())
+    # mod_private_classes = np.arange(len(private_classes)) + len(public_classes)
+
+    # relabel the targets of CIFAR-10
+    y_tmp = copy.deepcopy(y_train_CIFAR10)
+    y_test_tmp = copy.deepcopy(y_test_CIFAR10)
     for index, cls_ in enumerate(private_classes):
-        y_train_CIFAR100[y_tmp == cls_] = index + len(public_classes)
-        y_test_CIFAR100[y_test_tmp == cls_] = index + len(public_classes)
+        y_train_CIFAR10[y_tmp == cls_] = index + len(public_classes)
+        y_test_CIFAR10[y_test_tmp == cls_] = index + len(public_classes)
     del index, cls_
-    logging.debug(pd.Series(y_train_CIFAR100).value_counts())
+    logging.debug(pd.Series(y_train_CIFAR10).value_counts())
     mod_private_classes = np.arange(len(private_classes)) + len(public_classes)
-    # create public dataset
-    public_dataset = {"X": X_train_CIFAR10, "y": y_train_CIFAR10}
-    public_test_dataset = {"X": X_train_CIFAR10, "y": y_test_CIFAR10}
-    # create private dataset
+
+    # create public dataset using cifar 10
+    # public_dataset = {"X": X_train_CIFAR10, "y": y_train_CIFAR10}
+    # public_test_dataset = {"X": X_test_CIFAR10, "y": y_test_CIFAR10}
+
+    # create public dataset using MNIST
+    public_dataset = {"X": X_train_MNIST, "y": y_train_MNIST}
+    public_test_dataset = {"X": X_test_MNIST, "y": y_test_MNIST}
+
+    # # create private dataset using CIAFR100
+    # private_data, total_private_data \
+    #     = generate_bal_private_data(X_train_CIFAR100, y_train_CIFAR100,
+    #                                 N_parties=N_parties,
+    #                                 classes_in_use=mod_private_classes,
+    #                                 N_samples_per_class=N_samples_per_class,
+    #                                 data_overlap=False)
+    # X_tmp, y_tmp = generate_partial_data(X=X_test_CIFAR100, y=y_test_CIFAR100,
+    #                                      class_in_use=mod_private_classes)
+
+    # create private dataset using CIFAR10
     private_data, total_private_data \
-        = generate_bal_private_data(X_train_CIFAR100, y_train_CIFAR100,
+        = generate_bal_private_data(X_train_CIFAR10, y_train_CIFAR10,
                                     N_parties=N_parties,
                                     classes_in_use=mod_private_classes,
                                     N_samples_per_class=N_samples_per_class,
                                     data_overlap=False)
-    X_tmp, y_tmp = generate_partial_data(X=X_test_CIFAR100, y=y_test_CIFAR100,
+    X_tmp, y_tmp = generate_partial_data(X=X_test_CIFAR10, y=y_test_CIFAR10,
                                          class_in_use=mod_private_classes)
+
     private_test_data = {"X": X_tmp, "y": y_tmp}
     logging.debug('data prepared!')
     # create classifier_models for each party
@@ -173,10 +200,13 @@ if __name__ == "__main__":
                   private_data=private_data, total_private_data=total_private_data, private_test_data=private_test_data,
                   N_rounds=N_rounds, N_alignment=N_alignment, N_logits_matching_round=N_logits_matching_round,
                   logits_matching_batchsize=logits_matching_batchsize, model_saved_name=model_saved_names,
+                  result_saved_dir=result_saved_path,
                   N_private_training_round=N_private_training_round, model_saved_dir=model_saved_dir,
-                  private_training_batchsize=private_training_batchsize, temperature=temperature, N_private_classes=len(private_classes))
+                  private_training_batchsize=private_training_batchsize, temperature=temperature,
+                  N_private_classes=len(private_classes), train_private_model=train_private_model)
     acc_ref, acc_ini = fedmd.collaborative_training()
-
+    logging.info(acc_ref)
+    logging.info(acc_ini)
     label_names_need = []
     for idx in private_classes:
         label_names_need.append(fine_label_names[idx] + ' ' + str(idx))

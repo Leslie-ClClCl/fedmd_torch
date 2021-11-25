@@ -1,6 +1,7 @@
+import logging
+
 import numpy as np
 import torch
-
 from progressbar import *
 
 os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >./tmp')
@@ -34,7 +35,7 @@ def trainer(net, data_loader, epoch, optimizer, criteria, warmup_scheduler, usin
         attr = attr[1:]
         # writer.add_histogram("{}/{}".format(layer, attr), param, epoch)
     finish_time = time.time()
-    print('Training Epoch: {epoch} \tLoss: {:0.4f}\tLR: {:0.6f}\tTime Consumed:{:.2f}'.format(
+    logging.info('Training Epoch: {epoch} \tLoss: {:0.4f}\tLR: {:0.6f}\tTime Consumed:{:.2f}'.format(
         loss.item(),
         optimizer.param_groups[0]['lr'],
         finish_time - start_time,
@@ -64,7 +65,7 @@ def evaluate_acc(net, data_loader, criteria=None, epoch=0, tb=False, using_gpu=T
         correct += preds.eq(labels).sum()
 
     finish = time.time()
-    print('Test set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed:{:.2f}s'.format(
+    logging.info('Test set: Epoch: {}, Average loss: {:.4f}, Accuracy: {:.4f}, Time consumed:{:.2f}s'.format(
         epoch,
         test_loss / len(data_loader.dataset),
         correct.float() / len(data_loader.dataset),
