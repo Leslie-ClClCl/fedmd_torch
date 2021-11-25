@@ -121,23 +121,23 @@ if __name__ == "__main__":
     # logging.debug(pd.Series(y_train_CIFAR100).value_counts())
     # mod_private_classes = np.arange(len(private_classes)) + len(public_classes)
 
-    # relabel the targets of CIFAR-10
-    y_tmp = copy.deepcopy(y_train_CIFAR10)
-    y_test_tmp = copy.deepcopy(y_test_CIFAR10)
+    # relabel the targets of MNIST
+    y_tmp = copy.deepcopy(y_train_MNIST)
+    y_test_tmp = copy.deepcopy(y_test_MNIST)
     for index, cls_ in enumerate(private_classes):
-        y_train_CIFAR10[y_tmp == cls_] = index + len(public_classes)
-        y_test_CIFAR10[y_test_tmp == cls_] = index + len(public_classes)
+        y_train_MNIST[y_tmp == cls_] = index + len(public_classes)
+        y_test_MNIST[y_test_tmp == cls_] = index + len(public_classes)
     del index, cls_
-    logging.debug(pd.Series(y_train_CIFAR10).value_counts())
+    logging.debug(pd.Series(y_train_MNIST).value_counts())
     mod_private_classes = np.arange(len(private_classes)) + len(public_classes)
 
     # create public dataset using cifar 10
-    # public_dataset = {"X": X_train_CIFAR10, "y": y_train_CIFAR10}
-    # public_test_dataset = {"X": X_test_CIFAR10, "y": y_test_CIFAR10}
+    public_dataset = {"X": X_train_CIFAR10, "y": y_train_CIFAR10}
+    public_test_dataset = {"X": X_test_CIFAR10, "y": y_test_CIFAR10}
 
-    # create public dataset using MNIST
-    public_dataset = {"X": X_train_MNIST, "y": y_train_MNIST}
-    public_test_dataset = {"X": X_test_MNIST, "y": y_test_MNIST}
+    # # create public dataset using MNIST
+    # public_dataset = {"X": X_train_MNIST, "y": y_train_MNIST}
+    # public_test_dataset = {"X": X_test_MNIST, "y": y_test_MNIST}
 
     # # create private dataset using CIAFR100
     # private_data, total_private_data \
@@ -157,6 +157,16 @@ if __name__ == "__main__":
                                     N_samples_per_class=N_samples_per_class,
                                     data_overlap=False)
     X_tmp, y_tmp = generate_partial_data(X=X_test_CIFAR10, y=y_test_CIFAR10,
+                                         class_in_use=mod_private_classes)
+
+    # create private dataset using mnist
+    private_data, total_private_data \
+        = generate_bal_private_data(X_train_MNIST, y_train_MNIST,
+                                    N_parties=N_parties,
+                                    classes_in_use=mod_private_classes,
+                                    N_samples_per_class=N_samples_per_class,
+                                    data_overlap=False)
+    X_tmp, y_tmp = generate_partial_data(X=X_test_MNIST, y=y_test_MNIST,
                                          class_in_use=mod_private_classes)
 
     private_test_data = {"X": X_tmp, "y": y_tmp}
