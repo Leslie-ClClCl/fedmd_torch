@@ -102,7 +102,7 @@ def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch, 
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'scheduler_state_dict': scheduler.state_dict(),
-        }, os.path.join(save_dir, 'latest.pth'))
+        }, os.path.join(save_dir, time.strftime("%a_%b_%d_%H:%M:%S_%Y_%Z", time.localtime()) + '.png' + 'latest.pth'))
     return losses
 
 

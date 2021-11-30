@@ -10,7 +10,13 @@ from torchvision import datasets
 def tiny_imagenet_loader(root):
     trainset = datasets.ImageFolder(root=os.path.join(root, 'train'))
     testset = datasets.ImageFolder(root=os.path.join(root, 'val'))
-    return trainset.data, trainset.targets, testset.data, testset.targets
+    # train_loader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True, pin_memory=True)
+    # test_loader = torch.utils.data.DataLoader(testset, batch_size=128, shuffle=False, pin_memory=True)
+    train_image = [cv2.imread(fpath[0]) for fpath in trainset.samples]
+    train_target = trainset.targets
+    test_image = [cv2.imread(fpath[0]) for fpath in testset.samples]
+    test_target = testset.targets
+    return train_image, train_target, test_image, test_target
 
 
 def get_dataset(dataset_name):
@@ -23,9 +29,9 @@ def get_dataset(dataset_name):
     elif dataset_name == 'imagenet_tiny':
         train_data, train_target, test_data, test_target = \
             tiny_imagenet_loader('./data/tiny-imagenet-200/')
-        train_data = [cv2.resize(img, (32, 32)) for img in train_data]
-        test_data = [cv2.resize(img, (32, 32)) for img in test_data]
-        return train_data, train_target, test_data, test_target
+        train_data = numpy.array([cv2.resize(img, (32, 32)) for img in train_data])
+        test_data = numpy.array([cv2.resize(img, (32, 32)) for img in test_data])
+        return train_data, numpy.array(train_target), test_data, numpy.array(test_target)
     else:
         dataset = datasets.MNIST
     train_dataset = dataset(root='./data', train=True, download=True)

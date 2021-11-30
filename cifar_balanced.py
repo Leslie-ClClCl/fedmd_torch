@@ -44,13 +44,48 @@ def parseArgs():
     return args
 
 
-if __name__ == "__main__":
+def parse_data(public_dataset_name, private_dataset_name, public_classes_in_use, private_classes_in_use,
+               N_parties, N_samples_per_class):
+    # load data and create dataset
+    X_train_public, y_train_public, X_test_public, y_test_public = get_dataset(public_dataset_name)
+    X_train_private, y_train_private, X_test_private, y_test_private = get_dataset(private_dataset_name)
+
+    # filter specific class
+    X_train_public, y_train_public = generate_partial_data(X_train_public, y_train_public,
+                                                           class_in_use=public_classes_in_use)
+    X_test_public, y_test_public = generate_partial_data(X_test_public, y_test_public,
+                                                         class_in_use=public_classes_in_use)
+
+    X_train_private, y_train_private = generate_partial_data(X_train_private, y_train_private,
+                                                             class_in_use=private_classes_in_use)
+    X_test_private, y_test_private = generate_partial_data(X_test_private, y_test_private,
+                                                           class_in_use=private_classes_in_use)
+
+    # relabel the targets of private data
+    y_train_private = y_train_private + len(public_classes_in_use)
+    y_test_private = y_test_private + len(public_classes_in_use)
+    private_classes_in_use = [cls + len(public_classes_in_use) for cls in private_classes_in_use]
+
+    # create public & private dataset
+    public_dataset = {"X": X_train_public, "y": y_train_public}
+    public_test_dataset = {"X": X_test_public, "y": y_test_public}
+
+    private_data, total_private_data \
+        = generate_bal_private_data(X_train_private, y_train_private,
+                                    N_parties=N_parties,
+                                    classes_in_use=private_classes_in_use,
+                                    N_samples_per_class=N_samples_per_class,
+                                    data_overlap=False)
+    private_test_data = {"X": X_test_private, "y": y_test_private}
+    return public_dataset, public_test_dataset, private_data, private_test_data, total_private_data
+
+
+def fedmd_train():
     args = parseArgs()
     model_config = args.models
 
     public_classes = args.public_classes
-    if public_classes == 10:
-        public_classes = list(range(10))
+    public_classes = list(range(public_classes))
     private_classes = args.private_classes
     result_saved_path = os.path.join(args.result_saved_path,
                                      model_config[0] + '_' + str(private_classes) + '_t' + str(args.temperature))
@@ -84,7 +119,7 @@ if __name__ == "__main__":
     n_classes = len(public_classes) + len(private_classes)
 
     N_parties = len(model_config)
-    N_samples_per_class = 500
+    N_samples_per_class = 5000
 
     N_rounds = args.N_rounds
     N_alignment = args.N_alignment
@@ -111,6 +146,7 @@ if __name__ == "__main__":
     # X_test_CIFAR100, y_test_CIFAR100 = generate_partial_data(X_test_CIFAR100, y_test_CIFAR100,
     #                                                          class_in_use=private_classes)
 
+
     # # relabel the targets of CIFAR-100
     # y_tmp = copy.deepcopy(y_train_CIFAR100)
     # y_test_tmp = copy.deepcopy(y_test_CIFAR100)
@@ -131,23 +167,36 @@ if __name__ == "__main__":
     # logging.debug(pd.Series(y_train_MNIST).value_counts())
     # mod_private_classes = np.arange(len(private_classes)) + len(public_classes)
 
-    # relabel the targets of imagenet(private data)
-    y_tmp = copy.deepcopy(y_train_imagenet)
-    y_test_tmp = copy.deepcopy(y_test_imagenet)
-    for index, cls_ in enumerate(private_classes):
-        y_train_imagenet[y_tmp == cls_] = index + len(public_classes)
-        y_test_imagenet[y_test_tmp == cls_] = index + len(public_classes)
-    del index, cls_
-    logging.debug(pd.Series(y_train_imagenet).value_counts())
-    mod_private_classes = np.arange(len(private_classes)) + len(public_classes)
+    # # relabel the targets of imagenet(private data)
+    # y_tmp = copy.deepcopy(y_train_imagenet)
+    # y_test_tmp = copy.deepcopy(y_test_imagenet)
+    # for index, cls_ in enumerate(private_classes):
+    #     y_train_imagenet[y_tmp == cls_] = index + len(public_classes)
+    #     y_test_imagenet[y_test_tmp == cls_] = index + len(public_classes)
+    # del index, cls_
+    # logging.debug(pd.Series(y_train_imagenet).value_counts())
+    # mod_private_classes = np.arange(len(private_classes)) + len(public_classes)
 
-    # create public dataset using cifar 10
-    public_dataset = {"X": X_train_CIFAR10, "y": y_train_CIFAR10}
-    public_test_dataset = {"X": X_test_CIFAR10, "y": y_test_CIFAR10}
+    # relabel the targets of cifar10(private data)
+    y_tmp = copy.deepcopy(y_train_CIFAR10)
+    y_test_tmp = copy.deepcopy(y_test_CIFAR10)
+    for index, cls_ in enumerate(private_classes):
+        y_train_CIFAR10[y_tmp == cls_] = index + len(public_classes)
+        y_test_CIFAR10[y_test_tmp == cls_] = index + len(public_classes)
+    del index, cls_
+    logging.debug(pd.Series(y_train_CIFAR10).value_counts())
+    mod_private_classes = np.arange(len(private_classes)) + len(public_classes)
+    # # create public dataset using cifar 10
+    # public_dataset = {"X": X_train_CIFAR10, "y": y_train_CIFAR10}
+    # public_test_dataset = {"X": X_test_CIFAR10, "y": y_test_CIFAR10}
 
     # # create public dataset using MNIST
     # public_dataset = {"X": X_train_MNIST, "y": y_train_MNIST}
     # public_test_dataset = {"X": X_test_MNIST, "y": y_test_MNIST}
+
+    # create public dataset using imagenet
+    public_dataset = {"X": X_train_imagenet, "y": y_train_imagenet}
+    public_test_dataset = {"X": X_test_imagenet, "y": y_test_imagenet}
 
     # # create private dataset using CIAFR100
     # private_data, total_private_data \
@@ -160,14 +209,14 @@ if __name__ == "__main__":
     #                                      class_in_use=mod_private_classes)
 
     # create private dataset using CIFAR10
-    # private_data, total_private_data \
-    #     = generate_bal_private_data(X_train_CIFAR10, y_train_CIFAR10,
-    #                                 N_parties=N_parties,
-    #                                 classes_in_use=mod_private_classes,
-    #                                 N_samples_per_class=N_samples_per_class,
-    #                                 data_overlap=False)
-    # X_tmp, y_tmp = generate_partial_data(X=X_test_CIFAR10, y=y_test_CIFAR10,
-    #                                      class_in_use=mod_private_classes)
+    private_data, total_private_data \
+        = generate_bal_private_data(X_train_CIFAR10, y_train_CIFAR10,
+                                    N_parties=N_parties,
+                                    classes_in_use=mod_private_classes,
+                                    N_samples_per_class=N_samples_per_class,
+                                    data_overlap=False)
+    X_tmp, y_tmp = generate_partial_data(X=X_test_CIFAR10, y=y_test_CIFAR10,
+                                         class_in_use=mod_private_classes)
 
     # # create private dataset using mnist
     # private_data, total_private_data \
@@ -179,15 +228,15 @@ if __name__ == "__main__":
     # X_tmp, y_tmp = generate_partial_data(X=X_test_MNIST, y=y_test_MNIST,
     #                                      class_in_use=mod_private_classes)
 
-    # create private dataset using imagenet
-    private_data, total_private_data \
-        = generate_bal_private_data(X_train_imagenet, y_train_imagenet,
-                                    N_parties=N_parties,
-                                    classes_in_use=mod_private_classes,
-                                    N_samples_per_class=N_samples_per_class,
-                                    data_overlap=False)
-    X_tmp, y_tmp = generate_partial_data(X=X_test_imagenet, y=y_test_imagenet,
-                                         class_in_use=mod_private_classes)
+    # # create private dataset using imagenet
+    # private_data, total_private_data \
+    #     = generate_bal_private_data(X_train_imagenet, y_train_imagenet,
+    #                                 N_parties=N_parties,
+    #                                 classes_in_use=mod_private_classes,
+    #                                 N_samples_per_class=N_samples_per_class,
+    #                                 data_overlap=False)
+    # X_tmp, y_tmp = generate_partial_data(X=X_test_imagenet, y=y_test_imagenet,
+    #                                      class_in_use=mod_private_classes)
 
     private_test_data = {"X": X_tmp, "y": y_tmp}
     logging.debug('data prepared!')
@@ -230,7 +279,7 @@ if __name__ == "__main__":
                   private_data=private_data, total_private_data=total_private_data, private_test_data=private_test_data,
                   N_rounds=N_rounds, N_alignment=N_alignment, N_logits_matching_round=N_logits_matching_round,
                   logits_matching_batchsize=logits_matching_batchsize, model_saved_name=model_saved_names,
-                  result_saved_dir=result_saved_path,
+                  result_saved_dir=result_saved_path, N_public_classes=len(public_classes),
                   N_private_training_round=N_private_training_round, model_saved_dir=model_saved_dir,
                   private_training_batchsize=private_training_batchsize, temperature=temperature,
                   N_private_classes=len(private_classes), train_private_model=train_private_model)
@@ -243,3 +292,10 @@ if __name__ == "__main__":
     draw_hist([acc_ref, acc_ini], label_names_need, model_saved_names[0],
               os.path.join(result_saved_path, model_saved_names[0] + '_' + time.strftime("%a %b %d %H:%M:%S %Y %Z",
                                                                                          time.localtime())) + '.png')
+
+
+if __name__ == '__main__':
+    # fedmd_train()
+
+    data = parse_data('imagenet_tiny', 'cifar10', list(range(0, 100)), list(range(0, 10)), 1, 5000)
+    pass

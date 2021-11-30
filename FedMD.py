@@ -31,7 +31,7 @@ def get_logits(net, dataloader, temperature):
 class FedMD:
     def __init__(self, parties, ini_model, public_dataset, public_test_dataset,
                  private_data, total_private_data, temperature,
-                 private_test_data, N_alignment, N_private_classes,
+                 private_test_data, N_alignment, N_private_classes, N_public_classes,
                  N_rounds, model_saved_dir, model_saved_name, result_saved_dir, train_private_model,
                  N_logits_matching_round, logits_matching_batchsize,
                  N_private_training_round, private_training_batchsize):
@@ -42,6 +42,7 @@ class FedMD:
         self.private_test_data = private_test_data
         self.N_alignment = N_alignment
         self.N_private_classes = N_private_classes
+        self.N_public_classes = N_public_classes
         self.N_rounds = N_rounds
         self.N_logits_matching_round = N_logits_matching_round
         self.logits_matching_batchsize = logits_matching_batchsize
@@ -75,8 +76,9 @@ class FedMD:
             acc = evaluate_acc(parties[i], test_loader, criteria)
             logging.info('model accuracy: {:.4f}'.format(acc))
             optimizer = optim.SGD(parties[i].parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
-            train_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 160],
-                                                             gamma=0.2)  # learning rate decay
+            # optimizer = optim.SGD(parties[i].parameters(), lr=0.01, momentum=0.9)
+            train_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100, 140, 180],
+                                                             gamma=0.1)  # learning rate decay
             iter_per_epoch = len(train_loader)
             warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * 1)
             best_acc = 0.0
@@ -129,7 +131,7 @@ class FedMD:
                 acc_model_per_class = []
                 acc_init_per_class = []
                 for cls in range(self.N_private_classes):
-                    data_per_class_idx = (self.private_test_data["y"] == cls+10)
+                    data_per_class_idx = (self.private_test_data["y"] == cls + self.N_public_classes)
                     data_per_class_x = self.private_test_data["X"][data_per_class_idx]
                     data_per_class_y = self.private_test_data["y"][data_per_class_idx]
                     data_per_class_set = dataset_cifar(data_per_class_x, data_per_class_y, transform=transform_test)

@@ -316,13 +316,16 @@ def best_acc_weights(weights_folder):
 CIFAR100_TRAIN_MEAN = (0.5070751592371323, 0.48654887331495095, 0.4409178433670343)
 CIFAR100_TRAIN_STD = (0.2673342858792401, 0.2564384629170883, 0.27615047132568404)
 
+CIFAR10_TRAIN_MEAN = (0.4914, 0.4822, 0.4465)
+CIFAR10_TRAIN_STD = (0.2023, 0.1994, 0.2010)
+
 transform_train = transforms.Compose([
     # transforms.ToPILImage(),
     transforms.RandomCrop(32, padding=4),
     transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(15),
+    # transforms.RandomRotation(15),
     transforms.ToTensor(),
-    transforms.Normalize(CIFAR100_TRAIN_MEAN, CIFAR100_TRAIN_STD)
+    transforms.Normalize(CIFAR10_TRAIN_MEAN, CIFAR10_TRAIN_STD)
 ])
 
 transform_mnist = transforms.Compose([transforms.ToTensor(),
@@ -330,5 +333,5 @@ transform_mnist = transforms.Compose([transforms.ToTensor(),
 
 transform_test = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize(CIFAR100_TRAIN_MEAN, CIFAR100_TRAIN_STD)
+    transforms.Normalize(CIFAR10_TRAIN_MEAN, CIFAR10_TRAIN_STD)
 ])
