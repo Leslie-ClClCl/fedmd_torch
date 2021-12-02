@@ -4,7 +4,9 @@ import os.path
 import cv2
 import numpy
 import numpy as np
+import pandas as pd
 from torchvision import datasets
+from tqdm import tqdm
 
 
 def tiny_imagenet_loader(root):
@@ -32,6 +34,10 @@ def get_dataset(dataset_name):
         train_data = numpy.array([cv2.resize(img, (32, 32)) for img in train_data])
         test_data = numpy.array([cv2.resize(img, (32, 32)) for img in test_data])
         return train_data, numpy.array(train_target), test_data, numpy.array(test_target)
+    elif dataset_name == 'mura':
+        data_frames = get_study_level_data_mura('XR_ELBOW')
+        return data_frames['train'].iloc[:, 0:2], data_frames['train'].iloc[:, 2], \
+               data_frames['valid'].iloc[:, 0:2], data_frames['valid'].iloc[:, 2],
     else:
         dataset = datasets.MNIST
     train_dataset = dataset(root='./data', train=True, download=True)
@@ -93,5 +99,30 @@ def generate_bal_private_data(X, y, N_parties=10, classes_in_use=range(11),
     return priv_data, total_priv_data
 
 
+def get_study_level_data_mura(study_type):
+    """
+    Returns a dict, with keys 'train' and 'valid' and respective values as study level dataframes,
+    these dataframes contain three columns 'Path', 'Count', 'Label'
+    Args:
+        study_type (string): one of the seven study type folder names in 'train/valid/test' dataset
+    """
+    study_data = {}
+    study_label = {'positive': 1, 'negative': 0}
+    data_cat = ['train', 'valid']  # data categories
+    for phase in data_cat:
+        BASE_DIR = 'data/MURA-v1.1/MURA-v1.1/%s/%s/' % (phase, study_type)
+        patients = list(os.walk(BASE_DIR))[0][1]  # list of patient folder names
+        study_data[phase] = pd.DataFrame(columns=['Path', 'Count', 'Label'])
+        i = 0
+        for patient in tqdm(patients):  # for each patient folder
+            for study in os.listdir(BASE_DIR + patient):  # for each study in that patient folder
+                label = study_label[study.split('_')[1]]  # get label 0 or 1
+                path = BASE_DIR + patient + '/' + study + '/'  # path to this study
+                study_data[phase].loc[i] = [path, len(os.listdir(path)), label]  # add new row
+                i += 1
+    return study_data
+
+
 if __name__ == '__main__':
-    get_dataset('imagenet_tiny')
+    x0, y0, x1, y2 = get_dataset('mura')
+    pass

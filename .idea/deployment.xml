@@ -14,6 +14,9 @@
           <mappings>
             <mapping deploy="/" local="$PROJECT_DIR$" web="/" />
           </mappings>
+          <excludedPaths>
+            <excludedPath path="/results_imagenet_cifar/resnet18_100_10_t50/logit_matching_checkpoints/Thu_Dec_02_2021_UTC.pth" />
+          </excludedPaths>
         </serverdata>
       </paths>
       <paths name="fujiayun@222.20.126.60:22">

@@ -321,6 +321,7 @@ CIFAR10_TRAIN_STD = (0.2023, 0.1994, 0.2010)
 
 transform_train = transforms.Compose([
     # transforms.ToPILImage(),
+    transforms.Resize((512, 512)),
     transforms.RandomCrop(32, padding=4),
     transforms.RandomHorizontalFlip(),
     # transforms.RandomRotation(15),
@@ -332,6 +333,21 @@ transform_mnist = transforms.Compose([transforms.ToTensor(),
                                       transforms.Normalize(mean=[0.5], std=[0.5])])
 
 transform_test = transforms.Compose([
+    # transforms.Resize((512, 512)),
     transforms.ToTensor(),
     transforms.Normalize(CIFAR10_TRAIN_MEAN, CIFAR10_TRAIN_STD)
+])
+
+transform_mura_test = transforms.Compose([
+    # transforms.Resize((512, 512)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+transform_mura_train = transforms.Compose([
+    transforms.Resize((512, 512)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(10),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])

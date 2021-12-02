@@ -10,7 +10,9 @@ from utils import get_network, transform_test
 
 tmp = get_network('resnet18', num_classes=110)
 tmp.load_state_dict(
-    torch.load('results_imagenet_cifar/resnet18_10_t50/logit_matching_checkpoints/latest.pth')['model_state_dict'])
+    torch.load(
+        '/home/lichenglong/pycharm_project/fedmd_torch/results_imagenet_cifar/resnet18_100_10_t50/logit_matching_checkpoints/Thu_Dec_02_2021_UTC.pth')[
+        'model_state_dict'])
 tmp.cpu()
 
 
@@ -29,7 +31,7 @@ def relabel_data(label, private_classes):
     return label
 
 
-private_classes = list(range(100))
+private_classes = list(range(10))
 test_loader, X_test, y_test = get_test_data('cifar10', private_classes=private_classes)
 pred = None
 for x, y in test_loader:

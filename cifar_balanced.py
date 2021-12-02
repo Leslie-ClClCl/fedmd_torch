@@ -137,6 +137,9 @@ def fedmd_train():
     public_dataset, public_test_dataset, private_data, private_test_data, total_private_data \
         = parse_data('imagenet_tiny', 'cifar10', public_classes, private_classes, N_parties, N_samples_per_class)
 
+    # public_dataset, public_test_dataset, private_data, private_test_data, total_private_data \
+    #     = parse_data('mura', 'cifar10', public_classes, private_classes, N_parties, N_samples_per_class)
+
     logging.debug('data prepared!')
     # create classifier_models for each party
     parties = []

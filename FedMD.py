@@ -73,8 +73,8 @@ class FedMD:
             # checkpoint = torch.load('resnet18_cifar_18_best_soft.pth')
             # parties[i].load_state_dict(checkpoint)
             criteria = nn.CrossEntropyLoss()
-            acc = evaluate_acc(parties[i], test_loader, criteria)
-            logging.info('model accuracy: {:.4f}'.format(acc))
+            # acc = evaluate_acc(parties[i], test_loader, criteria)
+            # logging.info('model accuracy: {:.4f}'.format(acc))
             optimizer = optim.SGD(parties[i].parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
             # optimizer = optim.SGD(parties[i].parameters(), lr=0.01, momentum=0.9)
             train_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[100, 140, 180],
@@ -110,7 +110,7 @@ class FedMD:
             # generate alignment data randomly
             alignment_set = generate_alignment_data(self.public_dataset['X'],
                                                     self.public_dataset['y'],
-                                                    self.N_alignment, transform=transform_test)
+                                                    'all', transform=transform_test)
             alignment_loader = data.DataLoader(alignment_set, batch_size=self.logits_matching_batchsize, shuffle=False)
             logging.info("round %d" % r)
             # get logits
@@ -147,7 +147,8 @@ class FedMD:
             # then train global model using public logits
             criteria = nn.L1Loss()
             optimizer = torch.optim.Adam(self.ini_model.parameters(), lr=0.01, weight_decay=5e-9)
-            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[50, 100, 150, 200],
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                             milestones=[30, 60, 90, 120, 150, 180, 210, 240, 270],
                                                              gamma=np.sqrt(0.1))
             loss_rec = []
             for epoch in range(self.N_logits_matching_round):
