@@ -3,6 +3,11 @@ import logging
 import numpy as np
 import torch
 from progressbar import *
+from torch.utils import data
+
+from codes.data_process import dataset_cifar
+from codes.data_utils import get_dataset
+from codes.utils import get_network, transform_train, transform_test
 
 os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >./tmp')
 memory_gpu = [int(x.split()[2]) for x in open('./tmp', 'r').readlines()]
@@ -79,3 +84,18 @@ def evaluate_acc(net, data_loader, criteria=None, epoch=0, tb=False, using_gpu=T
         writer.add_scalar('Test/Accuracy', correct.float() / len(data_loader.dataset), epoch)
 
     return correct.float().item() / len(data_loader.dataset)
+
+
+
+if __name__ == '__main__':
+    net = get_network('resnet18', 10)
+    net.load_state_dict(torch.load('/home/lichenglong/pycharm_project/fedmd_torch_new/results_imagenet_cifar/resnet18_200_10_t5/logit_matching_checkpoints/016.pth')['model_state_dict'])
+    X_train_public, y_train_public, X_test_public, y_test_public = get_dataset('cifar10')
+    data_set = dataset_cifar(X_train_public, y_train_public, transform_test)
+    loader = data.DataLoader(data_set, batch_size=512, shuffle=True)
+    acc = evaluate_acc(net, loader)
+    print(acc)
+    data_set = dataset_cifar(X_test_public, y_test_public, transform_test)
+    loader = data.DataLoader(data_set, batch_size=512, shuffle=True)
+    acc = evaluate_acc(net, loader)
+    print(acc)

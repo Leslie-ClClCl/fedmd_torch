@@ -178,7 +178,7 @@ if __name__ == '__main__':
     net = resnet18(110)
     net.load_state_dict(checkpoint)
     net.cuda()
-    from data_utils import get_dataset
+    from data import get_dataset
     from data_process import dataset_cifar
     from utils import transform_test
     import torch.utils.data as data

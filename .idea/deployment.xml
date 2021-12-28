@@ -1,28 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="fedmd_torch" uploadOnCheckin="c2c198c8-b662-42be-b301-e8980f8e966c" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true">
+  <component name="PublishConfigData" autoUpload="Always" serverName="lichenglong@222.20.126.3:22 password" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true">
     <serverData>
-      <paths name="fedmd_2080">
+      <paths name="fedmd_torch">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
-      <paths name="fedmd_torch">
+      <paths name="fedmd_torch_2080">
         <serverdata>
           <mappings>
             <mapping deploy="/" local="$PROJECT_DIR$" web="/" />
           </mappings>
-          <excludedPaths>
-            <excludedPath path="/results_imagenet_cifar/resnet18_100_10_t50/logit_matching_checkpoints/Thu_Dec_02_2021_UTC.pth" />
-          </excludedPaths>
         </serverdata>
       </paths>
       <paths name="fujiayun@222.20.126.60:22">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="lichenglong@222.20.126.3:22 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/lichenglong/pycharm_project/fedmd_torch_new" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>
@@ -50,12 +54,11 @@
       <paths name="lichenglong@222.20.126.60:22 password (2)">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/lichenglong/pycharm_project/fedmd_torch" local="$PROJECT_DIR$" />
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
     </serverData>
-    <option name="myUploadOnCheckinName" value="fedmd_torch" />
     <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

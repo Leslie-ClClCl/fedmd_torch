@@ -79,14 +79,14 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, temperatu
 
         if iter_index % 100 == 0:
             logging.info(
-                f"train:\tepoch {epoch:d},\titer [{iter_index:d}, \t{iters:d}],\tlr: {scheduler.get_last_lr()[0]:.6f},\tloss_total: {loss.item():.6f}"
+                f"train:\tepoch {epoch:d},\titer [{iter_index:d}, \t{iters:d}],\tlr: {optimizer.state_dict()['param_groups'][0]['lr']:.6f},\tloss_total: {loss.item():.6f}"
             )
         iter_index += 1
-    scheduler.step()
+    scheduler.step(loss.item())
     return losses.avg
 
 
-def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch, temperature, save_dir='./'):
+def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch, temperature, save_dir='./', save_name=None):
     start_time = time.time()
     losses = train(train_loader, model, criterion, optimizer, scheduler, epoch, temperature)
     # remember best prec@1 and save checkpoint
@@ -98,11 +98,11 @@ def trainer_logits(model, train_loader, criterion, optimizer, scheduler, epoch, 
         {
             'epoch': epoch,
             'loss': losses,
-            'lr': scheduler.get_last_lr()[0],
+            'lr': optimizer.state_dict()['param_groups'][0]['lr'],
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'scheduler_state_dict': scheduler.state_dict(),
-        }, os.path.join(save_dir, time.strftime("%a_%b_%d_%Y_%Z", time.localtime()) + '.pth'))
+        }, os.path.join(save_dir, save_name))
     return losses
 
 

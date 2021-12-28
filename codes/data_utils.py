@@ -57,13 +57,17 @@ def get_dataset(dataset_name):
     return train_dataset.data, train_dataset.targets, test_dataset.data, test_dataset.targets
 
 
-def generate_partial_data(X, y, class_in_use=None, verbose=False):
+def generate_partial_data(X, y, class_in_use=None, N_total=0, verbose=False):
     if class_in_use is None:
         idx = np.ones_like(y, dtype=bool)
     else:
         idx = [y == i for i in class_in_use]
         idx = np.any(idx, axis=0)
     X_incomplete, y_incomplete = X[idx], y[idx]
+    if N_total != 0:
+        idx = numpy.random.choice(len(y), N_total)
+        X_incomplete = X[idx]
+        y_incomplete = y[idx]
     if verbose == True:
         logging.debug("X shape : {}".format(X_incomplete.shape))
         logging.debug("y shape : {}".format(y_incomplete.shape))
@@ -124,5 +128,10 @@ def get_study_level_data_mura(study_type):
 
 
 if __name__ == '__main__':
-    x0, y0, x1, y2 = get_dataset('mura')
-    pass
+    X = list(range(100))
+    y = []
+    for i in range(10):
+        y.extend(list(range(10)))
+    X, y = numpy.array(X), numpy.array(y)
+    generate_partial_data(X, y, N_total=20)
+

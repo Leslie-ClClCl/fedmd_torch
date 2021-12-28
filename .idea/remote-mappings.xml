@@ -3,7 +3,8 @@
   <component name="RemoteMappingsManager">
     <list>
       <list>
-        <remote-mappings server-id="python@fa5dfe25-8164-4c95-a457-da26fc01e0e5" />
+        <remote-mappings server-id="python@3f7af28f-5243-4246-8ecd-cd5efda243b2" />
+        <remote-mappings server-id="python@sftp://lichenglong@222.20.126.3:22/home/lichenglong/anaconda3/envs/fedmd_cl/bin/python3" />
       </list>
     </list>
   </component>

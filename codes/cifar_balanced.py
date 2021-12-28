@@ -1,4 +1,5 @@
 import argparse
+import copy
 import logging
 import os
 import time
@@ -28,6 +29,7 @@ def parseArgs():
     parser.add_argument('-temperature', type=int, default=10)
     parser.add_argument('-N_samples_per_class', type=int, default=500)
     parser.add_argument('-N_alignment', type=int, default=40000)
+    parser.add_argument('-N_public_samples', type=int, default=5000)
     parser.add_argument('-private_classes', type=int)
     parser.add_argument('-public_classes', type=int, default=10)
     parser.add_argument('-N_rounds', type=int, default=1)
@@ -43,13 +45,19 @@ def parseArgs():
 
 
 def parse_data(public_dataset_name, private_dataset_name, public_classes_in_use, private_classes_in_use,
-               N_parties, N_samples_per_class):
+               N_parties, N_samples_per_class, N_public_samples):
     # load data and create dataset
     X_train_public, y_train_public, X_test_public, y_test_public = get_dataset(public_dataset_name)
     X_train_private, y_train_private, X_test_private, y_test_private = get_dataset(private_dataset_name)
 
     # filter specific class
-    X_train_public, y_train_public = generate_partial_data(X_train_public, y_train_public,
+    # modify for verify,
+    # X_train_public, y_train_public = generate_partial_data(X_train_public, y_train_public, N_total=N_public_samples,
+    #                                                        class_in_use=public_classes_in_use)
+    # X_test_public, y_test_public = generate_partial_data(X_test_public, y_test_public,
+    #                                                      class_in_use=public_classes_in_use)
+
+    X_train_public, y_train_public = generate_partial_data(X_test_private, y_test_private, N_total=N_public_samples,
                                                            class_in_use=public_classes_in_use)
     X_test_public, y_test_public = generate_partial_data(X_test_public, y_test_public,
                                                          class_in_use=public_classes_in_use)
@@ -59,11 +67,15 @@ def parse_data(public_dataset_name, private_dataset_name, public_classes_in_use,
     X_test_private, y_test_private = generate_partial_data(X_test_private, y_test_private,
                                                            class_in_use=private_classes_in_use)
 
+    y_test_private_copy = copy.deepcopy(y_test_private)
+    y_train_private_copy = copy.deepcopy(y_train_private)
     # relabel the targets of private data
-    y_train_private = y_train_private + len(public_classes_in_use)
-    y_test_private = y_test_private + len(public_classes_in_use)
-    private_classes_in_use = [cls + len(public_classes_in_use) for cls in private_classes_in_use]
+    for idx, cls in enumerate(private_classes_in_use):
+        y_train_private[y_train_private_copy == cls] = idx
+        y_test_private[y_test_private_copy == cls] = idx
+        private_classes_in_use[idx] = idx
 
+    del y_train_private_copy, y_test_private_copy
     # create public & private dataset
     public_dataset = {"X": X_train_public, "y": y_train_public}
     public_test_dataset = {"X": X_test_public, "y": y_test_public}
@@ -115,11 +127,12 @@ def fedmd_train():
     else:
         private_classes = list(range(private_classes))
 
-    n_classes = len(public_classes) + len(private_classes)
+    # n_classes = len(public_classes) + len(private_classes)
+    n_classes = len(private_classes)
 
     N_parties = len(model_config)
-    N_samples_per_class = 5000
-
+    N_samples_per_class = 500
+    N_public_samples = args.N_public_samples
     N_rounds = args.N_rounds
     N_alignment = args.N_alignment
     N_private_training_round = args.N_private_training_round
@@ -135,7 +148,7 @@ def fedmd_train():
     logging.basicConfig(level=logging.DEBUG)
 
     public_dataset, public_test_dataset, private_data, private_test_data, total_private_data \
-        = parse_data('imagenet_tiny', 'cifar10', public_classes, private_classes, N_parties, N_samples_per_class)
+        = parse_data('cifar10', 'imagenet_tiny', public_classes, private_classes, N_parties, N_samples_per_class, N_public_samples)
 
     # public_dataset, public_test_dataset, private_data, private_test_data, total_private_data \
     #     = parse_data('mura', 'cifar10', public_classes, private_classes, N_parties, N_samples_per_class)
@@ -169,9 +182,10 @@ def fedmd_train():
         else:
             for idx, name in enumerate(model_names):
                 model_name = model_config[idx]
-                tmp = get_network(model_name, num_classes=n_classes)
-                tmp.load_state_dict(torch.load(dpath + '/' + name))
+                tmp = get_network(model_name, num_classes=len(private_classes))
+                tmp.load_state_dict(torch.load(dpath + '/' + name),  strict=False)
                 parties.append(tmp)
+
 
     model_name = model_config[0]
     ini_model = get_network(model_name, num_classes=n_classes)
@@ -190,8 +204,8 @@ def fedmd_train():
     label_names_need = []
     for idx in private_classes:
         label_names_need.append(fine_label_names[idx] + ' ' + str(idx))
-    draw_hist([acc_ref, acc_ini], label_names_need, model_saved_names[0],
-              os.path.join(result_saved_path, model_saved_names[0] + '_' + time.strftime("%a %b %d %H:%M:%S %Y %Z",
+    draw_hist([acc_ref, acc_ini], label_names_need, ['ref net acc', 'logit matching net acc'], model_saved_names[0],
+              os.path.join(result_saved_path, model_saved_names[0] + '_' + str(N_public_samples) + '_' + time.strftime("%a %b %d %H:%M:%S %Y %Z",
                                                                                          time.localtime())) + '.png')
 
 

@@ -1,0 +1,15 @@
+/checkpoints/
+/data/cifar-10-batches-py/
+/data/cifar-100-python/
+/data/MNIST/
+/data/tiny-imagenet-200/
+/data/cifar-10-python.tar.gz
+/data/cifar-100-python.tar.gz
+/pretrained_model/
+/results_cifar_imagenet/
+/results_cifar_mnist/
+/results_imagenet_cifar/
+/results_mnist_cifar/
+/results_test_cifar_10/
+/pretrained_model/
+/conf/
